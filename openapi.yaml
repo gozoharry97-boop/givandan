@@ -1,8 +1,11 @@
 openapi: 3.0.3
 info:
   title: Givaudan SmartOrder API
-  description: Spécification du contrat d'interface de la plateforme de commande intelligente B2B.
-  version: 1.0.0
+  description: |
+    Spécification du contrat d'interface de la plateforme de commande intelligente B2B.
+    Règle d'or : l'API ne calcule ni prix ni délai. Ils sont toujours confirmés par Givaudan.
+    Le catalogue de démonstration est synthétique (codes SYN-…).
+  version: 1.1.0
 paths:
   /api/health:
     get:
@@ -14,9 +17,51 @@ paths:
             application/json:
               example:
                 status: ok
+                db: PostgreSQL 17
+                ai: false
+  /api/client:
+    get:
+      summary: 'Client connecté (démo, Julien de PME Boissons)'
+      responses:
+        '200':
+          description: Le client
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Client' }
+  /api/assistant/analyze:
+    post:
+      summary: Comprend la demande et renvoie la prochaine question
+      description: |
+        Envoyer `text` pour une nouvelle demande, ou `criteria` + `answer` pour répondre à une question.
+        `answer.value` à null signifie « Ignorer cette question ».
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text:
+                  {
+                    type: string,
+                    example: 'Un arôme fruits rouges naturel pour ma boisson protéinée',
+                  }
+                criteria: { $ref: '#/components/schemas/Criteria' }
+                answer:
+                  type: object
+                  properties:
+                    key: { $ref: '#/components/schemas/QuestionKey' }
+                    value: { type: string, nullable: true, example: poudre }
+      responses:
+        '200':
+          description: Critères compris, précision et prochaine question
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Analysis' }
   /api/catalog/search:
     post:
-      summary: Recherche de références par langage naturel et descripteurs sensoriels
+      summary: Recherche de références par langage naturel et critères
+      description: Jusqu'à 3 références, avec des raisons tirées de la fiche. `expert` vaut true si aucune ne convient.
       requestBody:
         required: true
         content:
@@ -27,9 +72,323 @@ paths:
                 query:
                   type: string
                   example: 'vanille crémeuse pour boisson'
-                category:
-                  type: string
-                  enum: [flavors, fragrances]
+                criteria: { $ref: '#/components/schemas/Criteria' }
       responses:
         '200':
           description: Liste de références proposées
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  criteria: { $ref: '#/components/schemas/Criteria' }
+                  references:
+                    type: array
+                    items: { $ref: '#/components/schemas/Proposal' }
+                  expert: { type: boolean }
+                  summary: { $ref: '#/components/schemas/ExpertSummary' }
+  /api/catalog/{code}:
+    get:
+      summary: Fiche d'une référence
+      parameters:
+        - {
+            name: code,
+            in: path,
+            required: true,
+            schema: { type: string, example: SYN-FR-101 },
+          }
+      responses:
+        '200':
+          description: La fiche
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Flavor' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/requests:
+    get:
+      summary: Demandes du client (échantillons et relais expert)
+      responses:
+        '200':
+          description: Les demandes, les plus récentes d'abord
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Request' }
+    post:
+      summary: Demande d'échantillon ou relais vers un expert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [kind, need]
+              properties:
+                kind: { type: string, enum: [sample, expert] }
+                need: { type: string }
+                flavorId:
+                  {
+                    type: integer,
+                    description: Obligatoire pour un échantillon,
+                  }
+                criteria: { $ref: '#/components/schemas/Criteria' }
+                address: { type: string }
+      responses:
+        '201':
+          description: Demande créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Request' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/requests/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: integer } }
+    get:
+      summary: Une demande et son historique de statuts
+      responses:
+        '200':
+          description: La demande
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Request' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      summary: Avis du client sur l'échantillon reçu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                feedback:
+                  type: array
+                  items: { type: string }
+                  example: ['Le goût me convient']
+      responses:
+        '200':
+          description: La demande mise à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Request' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/requests/{id}/advance:
+    post:
+      summary: Démo — simule l'étape suivante côté Givaudan
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Statut avancé }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/orders:
+    get:
+      summary: Commandes du client
+      responses:
+        '200':
+          description: Les commandes, les plus récentes d'abord
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Order' }
+    post:
+      summary: Commande d'une référence (prix et date confirmés ensuite par Givaudan)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [flavorId, quantityKg, packaging, address]
+              properties:
+                flavorId: { type: integer }
+                requestId:
+                  {
+                    type: integer,
+                    description: Échantillon validé à l'origine de la commande,
+                  }
+                quantityKg: { type: number, minimum: 0, exclusiveMinimum: true }
+                packaging: { type: string, example: 25 kg }
+                address: { type: string }
+                internalRef: { type: string }
+      responses:
+        '201':
+          description: Commande créée
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /api/orders/{id}:
+    get:
+      summary: Une commande et son historique de statuts
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200':
+          description: La commande
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/orders/{id}/advance:
+    post:
+      summary: Démo — simule l'étape suivante côté Givaudan
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: Statut avancé }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  responses:
+    NotFound:
+      description: Introuvable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    BadRequest:
+      description: Données manquantes ou invalides
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+    QuestionKey:
+      type: string
+      enum: [family, format, natural, application]
+    Criteria:
+      type: object
+      properties:
+        family: { type: string, example: fruits rouges }
+        format: { type: string, enum: [poudre, liquide] }
+        natural:
+          {
+            type: boolean,
+            description: 'true : naturel exigé ; false : peu importe',
+          }
+        application: { type: string, example: boisson protéinée }
+        notes: { type: array, items: { type: string } }
+        custom:
+          { type: boolean, description: Création sur mesure, relais expert }
+        skipped:
+          { type: array, items: { $ref: '#/components/schemas/QuestionKey' } }
+    Question:
+      type: object
+      properties:
+        key: { $ref: '#/components/schemas/QuestionKey' }
+        label: { type: string }
+        hint: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            properties:
+              value: { type: string }
+              label: { type: string }
+              detail: { type: string }
+    Analysis:
+      type: object
+      properties:
+        criteria: { $ref: '#/components/schemas/Criteria' }
+        precision: { type: integer, minimum: 0, maximum: 100 }
+        question:
+          allOf: [{ $ref: '#/components/schemas/Question' }]
+          nullable: true
+        progress:
+          type: object
+          properties:
+            remaining: { type: integer }
+            total: { type: integer }
+    Flavor:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        family: { type: string }
+        notes: { type: array, items: { type: string } }
+        is_natural: { type: boolean }
+        formats:
+          { type: array, items: { type: string, enum: [poudre, liquide] } }
+        applications: { type: array, items: { type: string } }
+        strengths: { type: array, items: { type: string } }
+        packagings: { type: array, items: { type: string } }
+        description: { type: string }
+        source: { type: string }
+    Proposal:
+      type: object
+      properties:
+        flavor: { $ref: '#/components/schemas/Flavor' }
+        score: { type: integer }
+        reasons:
+          {
+            type: array,
+            items: { type: string },
+            description: Tirées de la fiche uniquement,
+          }
+        best: { type: boolean }
+    ExpertSummary:
+      type: object
+      properties:
+        need: { type: string }
+        product: { type: string }
+        constraints: { type: string }
+    StatusEvent:
+      type: object
+      properties:
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+    Request:
+      type: object
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [sample, expert] }
+        need: { type: string }
+        criteria: { $ref: '#/components/schemas/Criteria' }
+        flavor_id: { type: integer, nullable: true }
+        flavor_code: { type: string, nullable: true }
+        flavor_name: { type: string, nullable: true }
+        address: { type: string, nullable: true }
+        status:
+          type: string
+          description: 'sample : requested, prepared, shipped, received — expert : sent, in_progress, answered'
+        feedback: { type: array, items: { type: string }, nullable: true }
+        created_at: { type: string, format: date-time }
+        events:
+          {
+            type: array,
+            items: { $ref: '#/components/schemas/StatusEvent' },
+            nullable: true,
+          }
+    Order:
+      type: object
+      properties:
+        id: { type: integer }
+        request_id: { type: integer, nullable: true }
+        flavor_id: { type: integer }
+        flavor_code: { type: string }
+        flavor_name: { type: string }
+        quantity_kg: { type: string, example: '25.00' }
+        packaging: { type: string }
+        address: { type: string }
+        internal_ref: { type: string, nullable: true }
+        status:
+          { type: string, description: 'sent, confirmed, shipped, delivered' }
+        created_at: { type: string, format: date-time }
+        events:
+          {
+            type: array,
+            items: { $ref: '#/components/schemas/StatusEvent' },
+            nullable: true,
+          }
+    Client:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        company: { type: string }
+        email: { type: string }
+        address: { type: string }
