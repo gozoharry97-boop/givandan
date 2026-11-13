@@ -198,10 +198,13 @@ app.post('/api/catalog/search', async (req, res) => {
   const query = String(req.body?.query ?? '').trim();
   let criteria = toCriteria(req.body?.criteria);
   if (query) criteria = mergeCriteria(criteria, extractCriteria(query));
-  const references = criteria.custom ? [] : rank(await flavors(), criteria);
+  const catalog = await flavors();
+  const references = criteria.custom ? [] : rank(catalog, criteria);
   res.json({
     criteria,
     references,
+    // Nombre de fiches parcourues, affiché pendant l'animation du labo
+    scanned: catalog.length,
     expert: references.length === 0,
     summary: expertSummary(query, criteria),
   });

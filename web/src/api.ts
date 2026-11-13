@@ -52,6 +52,7 @@ export type Search = {
   criteria: Criteria;
   references: Proposal[];
   expert: boolean;
+  scanned: number;
   summary: { need: string; product: string; constraints: string };
 };
 

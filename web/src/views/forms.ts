@@ -1,5 +1,6 @@
 // Écrans 5 à 7 : récap d'échantillon, relais expert, commande
 import { api } from '../api';
+import { shipSample } from '../lab';
 import {
   bindQuit,
   cap,
@@ -75,6 +76,7 @@ export async function sample(root: HTMLElement, code: string) {
         address,
       });
       clearDraft();
+      await shipSample(flavor);
       toast('Demande d’échantillon envoyée à Givaudan');
       go(`#/suivi/demande/${created.id}`);
     } catch (e) {

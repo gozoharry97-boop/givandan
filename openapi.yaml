@@ -86,6 +86,8 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/Proposal' }
                   expert: { type: boolean }
+                  scanned:
+                    { type: integer, description: Nombre de fiches parcourues }
                   summary: { $ref: '#/components/schemas/ExpertSummary' }
   /api/catalog/{code}:
     get:

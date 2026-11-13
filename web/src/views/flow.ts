@@ -11,9 +11,9 @@ import {
   glossary,
   go,
   icon,
-  loading,
   setDraft,
 } from '../ui';
+import { familyColor, reducedMotion, runLab, tubeSvg } from '../lab';
 import { dictate, voiceSupported, type Dictation } from '../voice';
 
 const EXAMPLES = [
@@ -232,6 +232,7 @@ export function refine(root: HTMLElement) {
 
 // ---------- Écran 4 · Propositions
 function proposalCard(p: Proposal, index: number): string {
+  // index : rang dans le classement (0 = meilleure)
   const f = p.flavor;
   const terms = [
     f.is_natural ? 'Arôme naturel' : '',
@@ -239,7 +240,7 @@ function proposalCard(p: Proposal, index: number): string {
     f.formats.includes('liquide') ? 'Prêt à boire' : '',
     'Conditionnement',
   ];
-  return `<article class="proposal ${p.best ? 'best' : ''}">
+  return `<article class="proposal ${p.best ? 'best selected' : ''}" id="ref-${esc(f.code)}" data-code="${esc(f.code)}">
     <header>
       ${p.best ? `<span class="tag tag-best">${icon('sparkle', 16)}Meilleure correspondance</span>` : `<span class="tag">Option ${index + 1}</span>`}
       <h2>${esc(f.name)}</h2>
@@ -272,11 +273,15 @@ export async function proposals(root: HTMLElement) {
     go('#/dictee');
     return;
   }
-  root.innerHTML = `${flowHeader(2, '#/affiner')}${loading('Recherche dans le catalogue…')}`;
   bindQuit(root);
+  // L'animation du labo ne se joue qu'à la première recherche, pas en revenant en arrière
   const search =
     current.search ??
-    (await api.search(current.text, current.analysis?.criteria));
+    (await runLab(
+      root,
+      current.analysis?.criteria ?? { notes: [], custom: false, skipped: [] },
+      api.search(current.text, current.analysis?.criteria),
+    ));
   setDraft({ ...current, search });
 
   if (search.expert) {
@@ -301,6 +306,9 @@ export async function proposals(root: HTMLElement) {
   }
 
   const count = search.references.length;
+  // Sur le portoir, la meilleure référence au centre
+  const ranked = search.references.map((p, rank) => ({ p, rank }));
+  const order = count === 3 ? [ranked[1], ranked[0], ranked[2]] : ranked;
   root.innerHTML = `
     ${flowHeader(2, '#/affiner')}
     <section class="flow wide">
@@ -312,7 +320,21 @@ export async function proposals(root: HTMLElement) {
         </div>
         <div class="card compact">${criteriaChips(search.criteria)}<a class="link" href="#/dictee">${icon('edit', 16)}Modifier ma demande</a></div>
       </div>
-      <div class="proposals">${search.references.map(proposalCard).join('')}</div>
+      <div class="rack-band cols-${count}">
+        ${order
+          .map(
+            (
+              { p, rank },
+              i,
+            ) => `<button type="button" class="tube-btn ${p.best ? 'best' : ''}" data-code="${esc(p.flavor.code)}" aria-controls="ref-${esc(p.flavor.code)}" aria-pressed="${p.best}" style="--i:${i}">
+              ${tubeSvg({ color: familyColor(p.flavor.family), code: p.flavor.code, level: 0.8 - rank * 0.1, best: p.best })}
+              <span class="tube-name">${esc(p.flavor.name)}</span>
+              ${p.best ? `<span class="tube-best">${icon('sparkle', 14)}Meilleure correspondance</span>` : `<span class="tube-rank">Option ${rank + 1}</span>`}
+            </button>`,
+          )
+          .join('')}
+      </div>
+      <div class="proposals cols-${count}">${order.map(({ p, rank }) => proposalCard(p, rank)).join('')}</div>
       <aside class="expert-link">
         ${icon('forward')}
         <div><strong>Aucune ne convient&nbsp;?</strong><p>Un expert Givaudan reprend votre demande, sans que vous ayez à la répéter.</p></div>
@@ -320,4 +342,37 @@ export async function proposals(root: HTMLElement) {
       </aside>
     </section>`;
   bindQuit(root);
+  bindRack(root);
+}
+
+// Portoir : les tubes arrivent en se secouant, un tube touché se secoue et montre sa fiche
+function bindRack(root: HTMLElement) {
+  const tubes = [...root.querySelectorAll<HTMLButtonElement>('.tube-btn')];
+  const shake = (b: HTMLElement) => {
+    b.classList.remove('shake');
+    void b.offsetWidth;
+    b.classList.add('shake');
+  };
+  tubes.forEach((b, i) => {
+    setTimeout(() => shake(b), 450 + i * 180);
+    b.addEventListener('mouseenter', () => shake(b));
+    b.addEventListener('click', () => {
+      shake(b);
+      tubes.forEach((t) => t.setAttribute('aria-pressed', String(t === b)));
+      root
+        .querySelectorAll<HTMLElement>('.proposal')
+        .forEach((card) =>
+          card.classList.toggle(
+            'selected',
+            card.dataset.code === b.dataset.code,
+          ),
+        );
+      // Sur mobile, une seule fiche est visible : on l'amène à l'écran
+      if (window.matchMedia('(max-width: 767px)').matches)
+        root.querySelector('.proposal.selected')?.scrollIntoView({
+          behavior: reducedMotion() ? 'auto' : 'smooth',
+          block: 'nearest',
+        });
+    });
+  });
 }

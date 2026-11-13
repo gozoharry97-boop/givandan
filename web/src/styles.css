@@ -1678,6 +1678,674 @@ select:focus,
   font-size: 13px;
 }
 
+/* ---------- Laboratoire : verre translucide sur fond sombre */
+.lab,
+.rack-band {
+  --glass-bg:
+    radial-gradient(circle at 80% 0%, rgb(146 156 0 / 35%), transparent 55%),
+    radial-gradient(circle at 10% 100%, rgb(218 225 90 / 18%), transparent 50%),
+    var(--ink);
+}
+
+.lab {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 16px;
+  min-height: 480px;
+  padding: 28px 32px;
+  border-radius: 28px;
+  background: var(--glass-bg);
+  color: var(--cream);
+  overflow: hidden;
+}
+
+.lab-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.lab-status {
+  font-size: clamp(20px, 3vw, 26px);
+  font-weight: 500;
+}
+
+.lab-skip {
+  padding: 8px 16px;
+  border: 1px solid rgb(250 249 246 / 35%);
+  border-radius: 999px;
+  background: none;
+  color: var(--cream);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.lab-skip:hover {
+  border-color: var(--lime-300);
+  color: var(--lime-300);
+}
+
+.lab-scene {
+  position: relative;
+  min-height: 330px;
+  transition:
+    opacity 0.4s,
+    transform 0.4s;
+}
+
+.lab.p4 .lab-scene {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.lab-read,
+.lab-search,
+.lab-verify {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.45s,
+    transform 0.45s;
+  transform: translateY(8px);
+}
+
+.p1 .lab-read,
+.p2 .lab-search,
+.p3 .lab-verify,
+.p4 .lab-verify {
+  opacity: 1;
+  transform: none;
+}
+
+/* 1 · Lecture */
+.lab-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lab-chips li {
+  position: relative;
+  padding: 6px 14px;
+  border: 1px solid rgb(250 249 246 / 30%);
+  border-radius: 999px;
+  background: rgb(250 249 246 / 6%);
+  font-size: 15px;
+  animation: pop-in 0.35s calc(var(--i) * 0.18s) both;
+}
+
+.drop {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--c);
+  transform: rotate(-45deg);
+  opacity: 0;
+  animation: drop 0.6s calc(0.25s + var(--i) * 0.18s) ease-in both;
+}
+
+.flask {
+  width: 140px;
+  height: auto;
+  filter: drop-shadow(0 0 24px rgb(218 225 90 / 25%));
+}
+
+.flask-liquid {
+  animation: flask-fill 1.2s 0.2s ease-out both;
+}
+
+/* 2 · Recherche */
+.lab-rack {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: end;
+  gap: 10px 8px;
+  max-width: 520px;
+}
+
+.mini {
+  position: relative;
+  width: 14px;
+  height: 64px;
+  border: 1.5px solid rgb(250 249 246 / 55%);
+  border-top-width: 0;
+  border-radius: 2px 2px 8px 8px;
+  overflow: hidden;
+  animation: mini-in 0.35s calc(var(--i) * 35ms) both;
+  transition:
+    opacity 0.4s calc(var(--i) * 20ms),
+    transform 0.4s,
+    box-shadow 0.4s,
+    border-color 0.4s;
+}
+
+.mini::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: var(--lv);
+  background: var(--c);
+  transition: height 0.5s calc(var(--i) * 20ms);
+}
+
+.sorted .mini:not(.match) {
+  opacity: 0.25;
+}
+
+.sorted .mini:not(.match)::after {
+  height: 0;
+}
+
+.sorted .mini.match {
+  border-color: var(--lime-300);
+  box-shadow: 0 0 16px var(--c);
+  transform: translateY(-8px);
+}
+
+.sorted .mini.match::after {
+  height: 85%;
+}
+
+.lab-count {
+  color: rgb(250 249 246 / 72%);
+}
+
+.lab-count strong {
+  margin-right: 4px;
+  color: var(--cream);
+  font-size: 28px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 3 · Vérification */
+.lab-final {
+  display: flex;
+  align-items: end;
+  gap: 28px;
+}
+
+.final-tube {
+  width: 64px;
+  animation: rise-in 0.5s calc(var(--i) * 0.15s) both;
+}
+
+.final-tube .tube {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 0 18px rgb(218 225 90 / 30%));
+}
+
+.final-tube .liquid {
+  animation: fill 1s calc(0.2s + var(--i) * 0.15s) ease-out both;
+}
+
+.lab-checks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+
+.lab-checks li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pop-in 0.3s calc(0.5s + var(--i) * 0.2s) both;
+}
+
+.lab-checks .icon {
+  color: var(--lime-300);
+}
+
+.lab-steps {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: rgb(250 249 246 / 40%);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lab-steps li {
+  transition: color 0.3s;
+}
+
+.p1 .lab-steps li:nth-child(-n + 1),
+.p2 .lab-steps li:nth-child(-n + 2),
+.p3 .lab-steps li:nth-child(-n + 3),
+.p4 .lab-steps li {
+  color: var(--cream);
+}
+
+.p1 .lab-steps li:nth-child(1),
+.p2 .lab-steps li:nth-child(2),
+.p3 .lab-steps li:nth-child(3),
+.p4 .lab-steps li:nth-child(4) {
+  color: var(--lime-300);
+}
+
+/* Bulles des tubes */
+.bubble {
+  opacity: 0;
+}
+
+.final-tube .bubble,
+.tube-btn.shake .bubble,
+.ship .bubble {
+  animation: bubble 1.1s var(--d) ease-out 2;
+}
+
+/* ---------- Propositions : le portoir de tubes */
+.rack-band {
+  --th: 190px;
+  position: relative;
+  display: grid;
+  gap: 16px;
+  padding: 32px 24px 24px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--glass-bg);
+  color: var(--cream);
+}
+
+/* La barre du portoir passe devant les tubes */
+.rack-band::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: calc(32px + var(--th) * 0.62);
+  z-index: 2;
+  height: 14px;
+  border-radius: 4px;
+  background: linear-gradient(rgb(250 249 246 / 22%), rgb(250 249 246 / 8%));
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+}
+
+.cols-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.cols-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.cols-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.tube-btn {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 8px;
+  padding: 0 8px 4px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--cream);
+  cursor: pointer;
+  animation: tube-in 0.6s calc(var(--i) * 0.15s)
+    cubic-bezier(0.2, 0.8, 0.3, 1.2) both;
+}
+
+.tube-btn:focus-visible {
+  outline-color: var(--lime-300);
+}
+
+.tube-btn .tube {
+  width: auto;
+  height: var(--th);
+  transform-origin: 50% 88%;
+  transition: filter 0.3s;
+}
+
+.tube-btn[aria-pressed='true'] .tube {
+  filter: drop-shadow(0 0 22px rgb(218 225 90 / 45%));
+}
+
+.tube-btn.shake .tube {
+  animation: shake 0.7s ease-in-out;
+}
+
+.tube-name {
+  margin-top: 6px;
+  max-width: 18ch;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.tube-btn[aria-pressed='true'] .tube-name {
+  color: var(--lime-300);
+}
+
+.tube-best,
+.tube-rank {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.tube-best {
+  background: var(--lime-300);
+  color: var(--ink);
+}
+
+.tube-rank {
+  border: 1px solid rgb(250 249 246 / 30%);
+  color: rgb(250 249 246 / 75%);
+}
+
+.rack-band + .proposals {
+  padding: 16px;
+  border: 1px solid var(--grey-200);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--grey-100);
+}
+
+.proposals.cols-1,
+.proposals.cols-2,
+.proposals.cols-3 {
+  grid-template-columns: var(--cols);
+}
+
+.proposals.cols-1 {
+  --cols: minmax(0, 1fr);
+}
+
+.proposals.cols-2 {
+  --cols: repeat(2, minmax(0, 1fr));
+}
+
+.proposals.cols-3 {
+  --cols: repeat(3, minmax(0, 1fr));
+}
+
+.proposal.best {
+  border: 1px solid var(--grey-200);
+  box-shadow: none;
+}
+
+.proposal.selected {
+  border: 2px solid var(--ink);
+  box-shadow: var(--shadow);
+}
+
+@media (max-width: 767px) {
+  .rack-band {
+    --th: 128px;
+    padding: 24px 8px 16px;
+  }
+
+  .rack-band::before {
+    top: calc(24px + var(--th) * 0.62);
+    left: 8px;
+    right: 8px;
+    height: 10px;
+  }
+
+  .tube-name {
+    font-size: 13px;
+  }
+
+  .tube-best {
+    font-size: 11px;
+    padding: 2px 6px;
+  }
+
+  .proposals.cols-2,
+  .proposals.cols-3 {
+    --cols: minmax(0, 1fr);
+  }
+
+  .rack-band + .proposals {
+    padding: 8px;
+  }
+
+  /* Sur mobile, seule la fiche du tube choisi s'affiche */
+  .proposal:not(.selected) {
+    display: none;
+  }
+
+  .lab {
+    min-height: 460px;
+    padding: 20px;
+  }
+
+  .lab-final {
+    gap: 16px;
+  }
+
+  .final-tube {
+    width: 52px;
+  }
+
+  .lab-steps {
+    gap: 12px;
+    font-size: 11px;
+  }
+}
+
+/* ---------- Envoi de l'échantillon : le tube part au labo */
+.ship {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 20px;
+  background: rgb(11 18 21 / 92%);
+  backdrop-filter: blur(6px);
+  color: var(--cream);
+  font-size: 20px;
+  font-weight: 500;
+  text-align: center;
+  animation: fade-in 0.25s both;
+  transition: opacity 0.25s;
+}
+
+.ship.out {
+  opacity: 0;
+}
+
+.ship-scene {
+  position: relative;
+  width: 220px;
+  height: 300px;
+  overflow: hidden;
+}
+
+.box-back,
+.box-front {
+  position: absolute;
+  left: 10px;
+  bottom: 0;
+  width: 200px;
+}
+
+.box-front {
+  z-index: 2;
+}
+
+.ship-tube {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  z-index: 1;
+  width: 64px;
+  margin-left: -32px;
+  animation: ship-tube 1.5s 0.35s cubic-bezier(0.5, 0, 0.7, 1) both;
+}
+
+.ship-tube .tube {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 0 18px rgb(218 225 90 / 35%));
+}
+
+.ship .cork {
+  animation: cork-in 0.35s 0.05s both;
+}
+
+.box-lid {
+  position: absolute;
+  left: 10px;
+  bottom: 82px;
+  z-index: 3;
+  width: 200px;
+  animation: lid-in 0.4s 1.55s ease-out both;
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.95);
+  }
+}
+
+@keyframes drop {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(-45deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(90px) rotate(-45deg);
+  }
+}
+
+@keyframes flask-fill {
+  from {
+    transform: translateY(130px);
+  }
+  to {
+    transform: translateY(70px);
+  }
+}
+
+@keyframes mini-in {
+  from {
+    scale: 0.3;
+    translate: 0 14px;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@keyframes fill {
+  from {
+    transform: translateY(160px);
+  }
+}
+
+@keyframes bubble {
+  0% {
+    opacity: 0;
+    transform: translateY(0);
+  }
+  20% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-70px);
+  }
+}
+
+@keyframes tube-in {
+  from {
+    opacity: 0;
+    transform: translateY(-40px);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15% {
+    transform: rotate(-9deg);
+  }
+  35% {
+    transform: rotate(7deg);
+  }
+  55% {
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes cork-in {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+}
+
+@keyframes ship-tube {
+  0%,
+  20% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(170px) scale(0.85);
+  }
+}
+
+@keyframes lid-in {
+  from {
+    opacity: 0;
+    transform: translateY(-140px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
